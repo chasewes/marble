@@ -8,7 +8,7 @@ final class AudioEngine {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try session.setActive(true)
-            if let url = Bundle.main.url(forResource: "marble_loop", withExtension: "wav") {
+            if let url = Bundle.main.url(forResource: "marble", withExtension: "wav") {
                 player = try AVAudioPlayer(contentsOf: url)
                 player?.enableRate = true
                 player?.numberOfLoops = -1
