@@ -29,9 +29,33 @@
 		C4D4D8942E45987300B128CE /* marbleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = marbleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7F7B33E22E56BE54003F11F7 /* Exceptions for "marble" folder in "marble" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Games/Jared/JaredDebugGameView.swift.bak,
+			);
+			target = C4D4D8792E45987100B128CE /* marble */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		7F7B33E32E56BE54003F11F7 /* Exceptions for "marble" folder in "Compile Sources" phase from "marble" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = C4D4D8762E45987100B128CE /* Sources */;
+			membershipExceptions = (
+				Games/Jared/JaredDebugGameView.swift.bak,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C4D4D87C2E45987100B128CE /* marble */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7F7B33E22E56BE54003F11F7 /* Exceptions for "marble" folder in "marble" target */,
+				7F7B33E32E56BE54003F11F7 /* Exceptions for "marble" folder in "Compile Sources" phase from "marble" target */,
+			);
 			path = marble;
 			sourceTree = "<group>";
 		};

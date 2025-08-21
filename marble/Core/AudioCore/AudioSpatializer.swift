@@ -19,6 +19,7 @@ final class AudioSpatializer: ObservableObject {
         environment.reverbParameters.enable = true
         environment.reverbParameters.loadFactoryReverbPreset(.mediumRoom)
         environment.reverbParameters.level = -10
+
         
         // A touch of reverb helps externalization (optional).
 //        environment.reverbParameters.enable = true

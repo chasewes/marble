@@ -1,0 +1,56 @@
+import SwiftUI
+
+struct JaredDebugGameView: View {
+    @EnvironmentObject var tracker: HeadTracker
+    @EnvironmentObject var audio: AudioSpatializer
+
+    @State private var invertFB = true      // flip front/back if needed
+    @State private var invertLR = false     // flip left/right if needed
+    @State private var radius: Float = 1.5  // meters
+    private let metersPerRad: Float = 1.0   // (not used in fixed-radius mode)
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                Header(title: "Jared’s Game")
+                Readout(snapshot: tracker.snapshot)
+                TiltDot(roll: tracker.roll, pitch: tracker.pitch, color: .red)
+                Spacer(minLength: 8)
+            }
+            .padding()
+            .monospaced()
+        }
+//        .onAppear { try? audio.start(frequencyHz: 440) }
+
+        // KEY: only yaw rotates the listener; pitch/roll do NOT rotate the listener.
+        .onReceive(tracker.$snapshot) { s in
+            audio.updateListener(yaw: s.yaw, pitch: 0, roll: 0)
+
+            // Map tilt -> direction, keep constant radius.
+            var dx = Float(s.roll)
+            var dz = Float(s.pitch) // positive pitch = "forward" by default
+            if invertLR { dx = -dx }
+            if invertFB { dz = -dz }   // toggle this to feel front vs back
+
+            let len = max(0.001, hypotf(dx, dz))
+            let x = radius * dx / len               // +X right
+            let z = radius * dz / len               // NOTE: -Z is "in front" in Apple's world
+            audio.updateSource(xMeters: x, zMeters: z)
+        }
+
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Menu("Audio") {
+                    Button("Tone") { audio.playTone(440) }
+                    Button("SFX (loop)") { try? audio.playLoopedSFX(resource: "1000marbles") }
+                    Divider()
+                    Toggle("Invert Front/Back", isOn: $invertFB)
+                    Toggle("Invert Left/Right", isOn: $invertLR)
+                }
+                Button(audio.isRunning ? "Stop" : "Play") {
+                    if audio.isRunning { audio.stop() } else { try? audio.start() }
+                }
+            }
+        }
+    }
+}
