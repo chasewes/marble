@@ -11,7 +11,7 @@ var title: String { self == .chase ? "Chase’s Game" : "Jared’s Game" }
 struct RootView: View {
 @StateObject private var tracker = HeadTracker()
 @State private var selection: GameChoice? = nil
-
+@StateObject private var audio = AudioSpatializer()
 
 var body: some View {
 NavigationStack {
@@ -29,7 +29,9 @@ Text(choice.title).tag(GameChoice?.some(choice))
 Group {
 switch selection {
 case .chase?: ChaseDebugGameView().environmentObject(tracker)
-case .jared?: JaredDebugGameView().environmentObject(tracker)
+case .jared?: JaredDebugGameView()
+  .environmentObject(tracker)
+  .environmentObject(audio)
 case nil: Placeholder()
 }
 }
