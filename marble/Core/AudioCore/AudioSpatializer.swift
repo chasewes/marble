@@ -5,40 +5,61 @@ final class AudioSpatializer: ObservableObject {
     private let engine = AVAudioEngine()
     private let environment = AVAudioEnvironmentNode()
     private let player = AVAudioPlayerNode()
+    private let eq = AVAudioUnitEQ(numberOfBands: 3)   // ⬅️ new
     private var buffer: AVAudioPCMBuffer?
     @Published var isRunning = false
 
     init() {
-        // Listener at origin, facing -Z (default).
         environment.listenerPosition = AVAudio3DPoint(x: 0, y: 0, z: 0)
 
-        environment.distanceAttenuationParameters.distanceAttenuationModel = .inverse
-        environment.distanceAttenuationParameters.referenceDistance = 1.5
-        environment.distanceAttenuationParameters.rolloffFactor = 0.0   // ≈ no distance attenuation
-
-        environment.reverbParameters.enable = true
+        // Stronger externalization while testing
         environment.reverbParameters.loadFactoryReverbPreset(.mediumRoom)
         environment.reverbParameters.level = -10
-
-        
-        // A touch of reverb helps externalization (optional).
-//        environment.reverbParameters.enable = true
-//        environment.reverbParameters.level = -12
+        environment.distanceAttenuationParameters.distanceAttenuationModel = .inverse
+        environment.distanceAttenuationParameters.referenceDistance = 1.5
+        environment.distanceAttenuationParameters.rolloffFactor = 0.0
 
         engine.attach(environment)
         engine.attach(player)
+        engine.attach(eq)                                // ⬅️ attach EQ
 
-        // IMPORTANT: connect the player to the environment with a MONO format.
-        let sr = AVAudioSession.sharedInstance().sampleRate > 0
-               ? AVAudioSession.sharedInstance().sampleRate
-               : 48_000
+        // MONO all the way into the environment (spatializer only works on mono)
+        let sr = AVAudioSession.sharedInstance().sampleRate > 0 ? AVAudioSession.sharedInstance().sampleRate : 48_000
         let mono = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 1)!
-        engine.connect(player, to: environment, format: mono)
+
+        // player -> EQ -> environment -> main mixer
+        engine.connect(player, to: eq, format: mono)     // ⬅️ go through EQ
+        engine.connect(eq, to: environment, format: mono)
         engine.connect(environment, to: engine.mainMixerNode, format: nil)
 
-        // Binauralize the player (the source).
+        // Configure EQ: band-pass ~2–8 kHz and a little presence boost
+        configureEQ()
+
         player.renderingAlgorithm = .HRTF
         player.volume = 0.2
+    }
+
+    private func configureEQ() {
+        guard eq.bands.count >= 3 else { return }
+        // High-pass ~1.5 kHz
+        let hp = eq.bands[0]
+        hp.filterType = .highPass
+        hp.frequency = 1500
+        hp.bypass = false
+
+        // Low-pass ~8 kHz
+        let lp = eq.bands[1]
+        lp.filterType = .lowPass
+        lp.frequency = 8000
+        lp.bypass = false
+
+        // Presence bump ~7 kHz (helps front/back spectral cues)
+        let peak = eq.bands[2]
+        peak.filterType = .parametric
+        peak.frequency = 7000
+        peak.gain = 6     // dB
+        peak.bandwidth = 1.0 // octaves
+        peak.bypass = false
     }
 
     func start(frequencyHz: Double = 440) {
@@ -136,13 +157,13 @@ final class AudioSpatializer: ObservableObject {
         }
     }
     // Swap the currently playing loop with a new buffer and keep playing.
-    func replaceWithLoop(_ newBuffer: AVAudioPCMBuffer) {
-        if !isRunning { start() }    // uses your existing start()
-        player.stop()
-        buffer = newBuffer
-        player.scheduleBuffer(newBuffer, at: nil, options: [.loops], completionHandler: nil)
-        player.play()
-    }
+//    func replaceWithLoop(_ newBuffer: AVAudioPCMBuffer) {
+//        if !isRunning { start() }    // uses your existing start()
+//        player.stop()
+//        buffer = newBuffer
+//        player.scheduleBuffer(newBuffer, at: nil, options: [.loops], completionHandler: nil)
+//        player.play()
+//    }
 
     // Public: play a mono tone loop (handy to switch back).
     func playTone(_ frequencyHz: Double = 440, gain: Float = 0.18) {
@@ -190,6 +211,40 @@ final class AudioSpatializer: ObservableObject {
         outBuf.frameLength = AVAudioFrameCount(N)
         return outBuf
     }
+    // Public: play AM band-passed noise as a loop
+    func playNoise(gain: Float = 0.18, amHz: Double = 5.0) {
+        let sr = engine.outputNode.outputFormat(forBus: 0).sampleRate
+        let buf = makeAMNoiseBuffer(seconds: 2.0, sr: sr, gain: gain, amHz: amHz) // 2 s loop
+        replaceWithLoop(buf)
+    }
+
+    // Swap the current loop with a new buffer and keep playing
+    func replaceWithLoop(_ newBuffer: AVAudioPCMBuffer) {
+        if !isRunning { try? start() }
+        player.stop()
+        buffer = newBuffer
+        player.scheduleBuffer(newBuffer, at: nil, options: [.loops], completionHandler: nil)
+        player.play()
+    }
+
+    // --- Generators ---
+    private func makeAMNoiseBuffer(seconds: Double, sr: Double, gain: Float, amHz: Double) -> AVAudioPCMBuffer {
+        let format = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 1)!
+        let frames = AVAudioFrameCount(seconds * sr)
+        let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames)!
+        buf.frameLength = frames
+        let out = buf.floatChannelData![0]
+        let wAM = 2.0 * Double.pi * amHz / sr
+
+        // smooth AM between ~20% and 100% to avoid clicks
+        for n in 0..<Int(frames) {
+            let am = 0.6 + 0.4 * sin(wAM * Double(n))  // 0.2..1.0
+            let sample = Float.random(in: -1...1)      // white noise
+            out[n] = sample * gain * Float(am)
+        }
+        return buf
+    }
+
 
 }
 

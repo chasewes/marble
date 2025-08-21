@@ -122,7 +122,8 @@ struct JaredDebugGameView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Menu("Audio") {
-                    Button("Tone") { audio.playTone(440) }
+                    Button("Noise (best for spatial)") { audio.playNoise() }
+                    Button("Tone (440)") { audio.playTone(440) }
                     Button("SFX (loop)") { try? audio.playLoopedSFX(resource: "1000marbles") }
                 }
                 Button(audio.isRunning ? "Stop" : "Play") {
@@ -130,5 +131,6 @@ struct JaredDebugGameView: View {
                 }
             }
         }
+
     }
 }
